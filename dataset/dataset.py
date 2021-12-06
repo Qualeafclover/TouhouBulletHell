@@ -200,31 +200,33 @@ class DataLoader(object):
                 pass
             elif self.split == 'train':
                 # Flip LR
-                data = list(map(self.aug_flip_lr, data))
+                if self.random().random() > 0.5:
+                    data = list(map(self.aug_flip_lr, data))
+
+                # Flip UD
+                if self.random().random() > 0.5:
+                    data = list(map(self.aug_flip_ud, data))
+
             else:
                 raise TypeError(f'Unknown split type "{self.split}".')
 
             return data
 
-        def aug_flip_lr(self, data: dict) -> dict:
-            hit_array = np.zeros(shape=(450, 400), dtype=np.uint8)
-            pos = data['pos'][1] + 200, data['pos'][2]
-            print(data['pos'])
-            canvas = draw_polar_lines(hit_array, pos, False, data['hit_vision'], 150, 1)
-            cv2.imshow('', canvas)
-            cv2.waitKey(0)
-
+        @classmethod
+        def aug_flip_lr(cls, data: dict) -> dict:
+            angles = data['hit_vision'].shape[0]
             data['hit_vision'][:, 1:3] = np.roll(np.roll(data['hit_vision'][:, 1:3],
-                                                         -int(round(self.angles/4)), axis=0)[::-1],
-                                                 int(round(self.angles/4)) + 1, axis=0)
+                                                 -int(round(angles/4)), axis=0)[::-1],
+                                                 int(round(angles/4)) + 1, axis=0)
             data['key']['left'], data['key']['right'] = data['key']['right'], data['key']['left']
             data['pos'][1] = -data['pos'][1]
+            return data
 
-            hit_array = np.zeros(shape=(450, 400), dtype=np.uint8)
-            pos = data['pos'][1] + 200, data['pos'][2]
-            canvas = draw_polar_lines(hit_array, pos, False, data['hit_vision'], 150, 1)
-            cv2.imshow('', canvas)
-            cv2.waitKey(0)
+        @classmethod
+        def aug_flip_ud(cls, data: dict) -> dict:
+            data['hit_vision'][:, 1:3] = np.roll(data['hit_vision'][::-1, 1:3], 1, axis=0)
+            data['key']['up'], data['key']['down'] = data['key']['down'], data['key']['up']
+            data['pos'][2] = 450 - data['pos'][2]
             return data
 
         def path2json(self, path: str, verbose: bool = False) -> dict:
