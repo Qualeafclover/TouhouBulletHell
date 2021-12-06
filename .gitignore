@@ -4,3 +4,5 @@ json_dataset
 logs
 model_v1
 simulator
+venv
+.idea
