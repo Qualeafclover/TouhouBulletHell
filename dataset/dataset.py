@@ -64,7 +64,7 @@ def get_vision(pos: typing.Union[tuple, list], angles: int, img: np.ndarray) -> 
         h, w, _ = shape
         img = img.squeeze(axis=-1)
     else:
-        raise f'Unknown img array shape, "{shape}".'
+        raise Exception(f'Unknown img array shape, "{shape}".')
     max_len = int(np.ceil((h ** 2 + w ** 2) ** 0.5))
     check_angles = np.linspace(0, np.pi*2, angles, endpoint=False)
 
@@ -84,7 +84,7 @@ def get_vision(pos: typing.Union[tuple, list], angles: int, img: np.ndarray) -> 
 
     lines = list(map(
         (lambda arr:
-         img[arr[:, 1].astype(np.int), arr[:, 0].astype(np.int)]
+         img[arr[:, 1].astype(int), arr[:, 0].astype(int)]
          ),
         check_lines))  # values of images on check_line positions
 
@@ -112,7 +112,7 @@ def draw_polar_line(image: np.ndarray,
     elif len(image.shape) == 3:
         h, w, _ = image.shape
     else:
-        raise f'Unknown img array shape, "{image.shape}".'
+        raise Exception(f'Unknown img array shape, "{image.shape}".')
 
     if relative_start_point:
         start_point = start_point[0] * w, start_point[1] * h
@@ -206,8 +206,7 @@ class DataLoader(object):
 
             return data
 
-        @classmethod
-        def aug_flip_lr(cls, data: dict) -> dict:
+        def aug_flip_lr(self, data: dict) -> dict:
             hit_array = np.zeros(shape=(450, 400), dtype=np.uint8)
             pos = data['pos'][1] + 200, data['pos'][2]
             print(data['pos'])
@@ -215,13 +214,14 @@ class DataLoader(object):
             cv2.imshow('', canvas)
             cv2.waitKey(0)
 
-            data['hit_vision'][:, 1:3] = data['hit_vision'][::-1, 1:3]  # TODO Fix this algorithm
+            data['hit_vision'][:, 1:3] = np.roll(np.roll(data['hit_vision'][:, 1:3],
+                                                         -int(round(self.angles/4)), axis=0)[::-1],
+                                                 int(round(self.angles/4)) + 1, axis=0)
             data['key']['left'], data['key']['right'] = data['key']['right'], data['key']['left']
             data['pos'][1] = -data['pos'][1]
 
             hit_array = np.zeros(shape=(450, 400), dtype=np.uint8)
             pos = data['pos'][1] + 200, data['pos'][2]
-            print(data['pos'])
             canvas = draw_polar_lines(hit_array, pos, False, data['hit_vision'], 150, 1)
             cv2.imshow('', canvas)
             cv2.waitKey(0)
@@ -291,7 +291,7 @@ class DataLoader(object):
 
 
 if __name__ == '__main__':
-    dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
+    dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
                     train_test_split=0.2, seed=42,
                     preload_level=0, angles=128, batch_size=1)
 
