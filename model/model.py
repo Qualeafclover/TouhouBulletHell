@@ -120,6 +120,32 @@ def pool1d_loop(input_data, pool_type='max', pool_size=3, strides=2, layer_names
     return output_layer(input_data)
 
 
+def mapping_network(input_data, nodes: int, depth: int, activation=layers.ReLU(),
+                    bn=True, activation_first=False, layer_names: list = None):
+    def layer(x):
+        for n_depth in range(depth):
+            x = dense(x, nodes=nodes, activation=activation, bn=bn,
+                      activation_first=activation_first, dropout=0.0, layer_names=layer_names)
+        return x
+    input_layer = layers.Input(shape=input_data.shape[1:])
+    output_tensor = layer(input_layer)
+
+    if layer_names is None:
+        name = 'Mapping'
+    else:
+        counter = 1
+        while True:
+            name = f'Mapping_{counter}'
+            if name in layer_names:
+                counter += 1
+            else:
+                layer_names.append(name)
+                break
+
+    output_layer = Model(input_layer, output_tensor, name=name)
+    return output_layer(input_data)
+
+
 # Outdated method
 def conv1d_loop_resnet_block(input_data, input_filters: int, output_filters: int,
                              kernel_size=3, groups=1, activation=layers.ReLU(), down_sample=False):

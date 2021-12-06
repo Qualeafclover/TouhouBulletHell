@@ -206,10 +206,8 @@ class DataLoader(object):
                 # Flip UD
                 if self.random().random() > 0.5:
                     data = list(map(self.aug_flip_ud, data))
-
             else:
                 raise TypeError(f'Unknown split type "{self.split}".')
-
             return data
 
         @classmethod
@@ -298,6 +296,5 @@ if __name__ == '__main__':
                     preload_level=0, angles=128, batch_size=1)
 
     for data_ in dl.train_ds:
-        # print(data_)
-        pass
-        # break
+        print(data_)
+        break
