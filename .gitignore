@@ -5,6 +5,7 @@ logs
 model_v1
 simulator
 venv
+.idea
 __pycache__
 dataset/__pycache__
 game_master/__pycache__
