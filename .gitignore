@@ -6,3 +6,4 @@ model_v1
 simulator
 venv
 .idea
+__pycache__
