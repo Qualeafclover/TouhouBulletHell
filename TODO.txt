@@ -1,0 +1,17 @@
+Phase 1:
+X   Find cheat engine / alternative to access Touhou memory on Linux
+X   Simple bullet-hell game for controllable testing
+
+Mixed precision not working.
+Phase 2:
+X   Game controller for wine Linux
+X   Create data-collection method and get training data
+X?  Create data loader
+    Create logger
+
+Phase 3:
+    Custom AI model for bullet-hell
+    Train model and test it
+
+Phase 4:
+    Self-learning???

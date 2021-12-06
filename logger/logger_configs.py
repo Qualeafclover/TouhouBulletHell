@@ -1,0 +1,2 @@
+LOGGER_DIRECTORY = 'logs'
+LOGGER_VERBOSE = True

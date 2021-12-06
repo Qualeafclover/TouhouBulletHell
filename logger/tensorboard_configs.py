@@ -1,0 +1,3 @@
+TENSORBOARD_LOG = 'tensorboard_log'
+TENSORBOARD_RESET = True
+TENSORBOARD_LAUNCH = True
