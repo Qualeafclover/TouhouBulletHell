@@ -2,3 +2,4 @@ numpy
 tensorflow
 jupyterlab
 pandas
+opencv-python
