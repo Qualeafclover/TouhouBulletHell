@@ -11,10 +11,24 @@ from tensorflow.keras import layers
 from tensorflow.keras import Model
 
 
+def name_layer(prefix='Layer', layer_names: list = None) -> str:
+    if layer_names is None:
+        name = prefix
+    else:
+        counter = 1
+        while True:
+            name = f'{prefix}_{counter}'
+            if name in layer_names:
+                counter += 1
+            else:
+                layer_names.append(name)
+                break
+    return name
+
+
 def dense(input_data, nodes: int, activation=layers.ReLU(), bn=True, activation_first=False, dropout=0.0,
           layer_names: list = None):
-    if layer_names is None:
-        layer_names = []
+    name = name_layer('Dense', layer_names=layer_names)
 
     def layer(x):
         x = layers.Dense(nodes)(x)
@@ -30,26 +44,13 @@ def dense(input_data, nodes: int, activation=layers.ReLU(), bn=True, activation_
     input_layer = layers.Input(shape=input_data.shape[1:])
     output_tensor = layer(input_layer)
 
-    if layer_names is None:
-        name = 'Dense'
-    else:
-        counter = 1
-        while True:
-            name = f'Dense_{counter}'
-            if name in layer_names:
-                counter += 1
-            else:
-                layer_names.append(name)
-                break
-
     output_layer = Model(input_layer, output_tensor, name=name)
     return output_layer(input_data)
 
 
 def conv1d_loop(input_data, filters: int, kernel_size=3, strides=1, groups=1, activation=layers.ReLU(),
                 bn=True, activation_first=False, dropout=0.0, layer_names: list = None):
-    if layer_names is None:
-        layer_names = []
+    name = name_layer('LoopConv1D', layer_names=layer_names)
 
     def layer(x):
         pad_size = int((kernel_size - 1) / 2)
@@ -69,25 +70,12 @@ def conv1d_loop(input_data, filters: int, kernel_size=3, strides=1, groups=1, ac
     input_layer = layers.Input(shape=input_data.shape[1:])
     output_tensor = layer(input_layer)
 
-    if layer_names is None:
-        name = 'LoopConv1D'
-    else:
-        counter = 1
-        while True:
-            name = f'LoopConv1D_{counter}'
-            if name in layer_names:
-                counter += 1
-            else:
-                layer_names.append(name)
-                break
-
     output_layer = Model(input_layer, output_tensor, name=name)
     return output_layer(input_data)
 
 
 def pool1d_loop(input_data, pool_type='max', pool_size=3, strides=2, layer_names: list = None):
-    if layer_names is None:
-        layer_names = []
+    name = name_layer(f'{pool_type}Pool', layer_names=layer_names)
 
     def layer(x):
         pad_size = int((pool_size - 1) / 2)
@@ -103,44 +91,6 @@ def pool1d_loop(input_data, pool_type='max', pool_size=3, strides=2, layer_names
 
     input_layer = layers.Input(shape=input_data.shape[1:])
     output_tensor = layer(input_layer)
-
-    if layer_names is None:
-        name = f'{pool_type}Pool'
-    else:
-        counter = 1
-        while True:
-            name = f'{pool_type}Pool_{counter}'
-            if name in layer_names:
-                counter += 1
-            else:
-                layer_names.append(name)
-                break
-
-    output_layer = Model(input_layer, output_tensor, name=name)
-    return output_layer(input_data)
-
-
-def mapping_network(input_data, nodes: int, depth: int, activation=layers.ReLU(),
-                    bn=True, activation_first=False, layer_names: list = None):
-    def layer(x):
-        for n_depth in range(depth):
-            x = dense(x, nodes=nodes, activation=activation, bn=bn,
-                      activation_first=activation_first, dropout=0.0, layer_names=layer_names)
-        return x
-    input_layer = layers.Input(shape=input_data.shape[1:])
-    output_tensor = layer(input_layer)
-
-    if layer_names is None:
-        name = 'Mapping'
-    else:
-        counter = 1
-        while True:
-            name = f'Mapping_{counter}'
-            if name in layer_names:
-                counter += 1
-            else:
-                layer_names.append(name)
-                break
 
     output_layer = Model(input_layer, output_tensor, name=name)
     return output_layer(input_data)
@@ -185,41 +135,6 @@ def conv1d_loop_inception_block(input_data, inception_filters: list, bn=True, ac
 
 
 def create_model() -> Model:
-    # def model(input_data, input_loc):
-    #     layer_names = []
-    #     x = input_data
-    #
-    #     x = conv1d_loop(x, filters=32, kernel_size=11, strides=2, bn=True, layer_names=layer_names)
-    #     x = conv1d_loop(x, filters=32, kernel_size=3, bn=True, layer_names=layer_names)
-    #     x = conv1d_loop(x, filters=64, kernel_size=3, bn=True, layer_names=layer_names)
-    #     x = pool1d_loop(x, layer_names=layer_names)
-    #
-    #     x = conv1d_loop(x, filters=80, kernel_size=3, bn=True, layer_names=layer_names)
-    #     x = conv1d_loop(x, filters=192, kernel_size=3, strides=2, bn=True, layer_names=layer_names)
-    #     x = conv1d_loop(x, filters=288, kernel_size=3, bn=True, layer_names=layer_names)
-    #
-    #     x = conv1d_loop_inception_block(x, inception_filters=[32, 64, 128, 32], bn=True, layer_names=layer_names)
-    #     x = conv1d_loop_inception_block(x, inception_filters=[64, 128, 192, 96], bn=True, layer_names=layer_names)
-    #     x = pool1d_loop(x, layer_names=layer_names)
-    #
-    #     x = conv1d_loop_inception_block(x, inception_filters=[64, 128, 256, 64], bn=True, layer_names=layer_names)
-    #     x = conv1d_loop_inception_block(x, inception_filters=[128, 256, 320, 128], bn=True, layer_names=layer_names)
-    #     x_ = layers.AveragePooling1D(pool_size=16)(x)
-    #     x_ = layers.Flatten()(x_)
-    #     x = pool1d_loop(x, layer_names=layer_names)
-    #
-    #     x = conv1d_loop_inception_block(x, inception_filters=[128, 256, 320, 128], bn=True, layer_names=layer_names)
-    #     x = conv1d_loop_inception_block(x, inception_filters=[128, 384, 384, 128], bn=True, layer_names=layer_names)
-    #     x = layers.AveragePooling1D(pool_size=8)(x)
-    #
-    #     x = layers.Flatten()(x)
-    #     x = layers.Concatenate(axis=-1)([x, x_])
-    #     x = layers.Dropout(rate=0.3)(x)
-    #     x = dense(x, 128, bn=True, dropout=0.1, layer_names=layer_names)
-    #     x = dense(x, 64, layer_names=layer_names)
-    #     x = layers.Concatenate(axis=1)([x, input_loc])
-    #     x = layers.Dense(MODEL_OUTPUT, activation='sigmoid')(x)
-    #     return x
     def model(input_data, input_loc):
         layer_names = []
         x = input_data
