@@ -291,9 +291,10 @@ class DataLoader(object):
 
 
 if __name__ == '__main__':
-    dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
+    # dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
+    dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
                     train_test_split=0.2, seed=42,
-                    preload_level=0, angles=128, batch_size=1)
+                    preload_level=0, angles=256, batch_size=1)
 
     for data_ in dl.train_ds:
         print(data_)
