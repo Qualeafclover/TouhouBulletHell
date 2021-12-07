@@ -78,3 +78,12 @@ while True:
 #     for data in dl.train_ds:
 #         print(data['ctrl'][0])
 #         break
+
+import tensorflow as tf
+
+
+x = tf.reshape(tf.range(21, dtype=tf.float32), [7, 3])
+x_transform = tf.convert_to_tensor([-1, -0.5, 0, 0.5, 1, 1.5, 2], dtype=tf.float32)
+print(x)
+print(x_transform)
+print(tf.multiply(x, x_transform))
