@@ -74,6 +74,35 @@ def conv1d_loop(input_data, filters: int, kernel_size=3, strides=1, groups=1, ac
     return output_layer(input_data)
 
 
+def conv1d_trans_loop(input_data, input_loc, filters: int, kernel_size=3, strides=1, groups=1, activation=layers.ReLU(),
+                      bn=True, activation_first=False, dropout=0.0, layer_names: list = None):
+    name = name_layer('LoopTransConv1D', layer_names=layer_names)
+
+    def layer(x, pos):
+        pad_size = int((kernel_size - 1) / 2)
+        if pad_size != 0:
+            x = layers.Concatenate(axis=1)([x[:, -pad_size:], x, x[:, :pad_size]])
+        x = layers.Conv1D(filters, kernel_size, strides, groups=groups)(x)
+        x_transform = layers.Dense(filters)(pos)
+        x = layers.multiply([x, x_transform])
+        if activation_first and (activation is not None):
+            x = activation(x)
+        if bn:
+            x = layers.BatchNormalization()(x)
+        if (not activation_first) and (activation is not None):
+            x = activation(x)
+        if dropout:
+            x = layers.Dropout(dropout)(x)
+        return x
+
+    input_layer = layers.Input(shape=input_data.shape[1:])
+    input_pos = layers.Input(shape=input_loc.shape[1:])
+    output_tensor = layer(input_layer, input_pos)
+
+    output_layer = Model((input_layer, input_pos), output_tensor, name=name)
+    return output_layer((input_data, input_loc))
+
+
 def pool1d_loop(input_data, pool_type='max', pool_size=3, strides=2, layer_names: list = None):
     name = name_layer(f'{pool_type}Pool', layer_names=layer_names)
 
@@ -138,18 +167,19 @@ def create_model() -> Model:
     def model(input_data, input_loc):
         layer_names = []
         x = input_data
+        x1 = input_loc
 
-        x = conv1d_loop(x, filters=16, kernel_size=11, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
-        x = conv1d_loop(x, filters=32,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
-        x = conv1d_loop(x, filters=64,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
-        x = conv1d_loop(x, filters=128, kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
-        x = conv1d_loop(x, filters=256, kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
+        x = conv1d_trans_loop(x, x1, 16, kernel_size=11, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
+        x = conv1d_trans_loop(x, x1, 32,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
+        x = conv1d_trans_loop(x, x1, 64,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
+        x = conv1d_trans_loop(x, x1, 128, kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
+        x = conv1d_trans_loop(x, x1, 256, kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
 
         x = layers.Flatten()(x)
         x = dense(x, 256, bn=True, dropout=0.1, layer_names=layer_names)
         x = dense(x, 128, dropout=0.1, layer_names=layer_names)
         x = dense(x, 64, layer_names=layer_names)
-        x = layers.Concatenate(axis=1)([x, input_loc])
+        x = layers.Concatenate(axis=1)([x, x1])
         x = layers.Dense(MODEL_OUTPUT, activation='sigmoid')(x)
         return x
 
@@ -206,13 +236,10 @@ if __name__ == '__main__':
     loop_net.summary()
     print()
 
-    # disc_net = create_encoder()
-    # disc_net.summary()
-
-    # in_ = (tf.random.uniform(shape=(8, MODEL_VISION, 2)),
-    #        tf.random.uniform(shape=(8, 2)))
-    # out = loop_net(in_)
-    # print(out)
+    in_ = (tf.random.uniform(shape=(2, MODEL_VISION, 2)),
+           tf.random.uniform(shape=(2, 2)))
+    out = loop_net(in_)
+    print(out)
 
     # a = loop_net.save_weights('/home/shin/Desktop/TouhouBulletHell/checkpoint/cp-01')
     # print(a)
