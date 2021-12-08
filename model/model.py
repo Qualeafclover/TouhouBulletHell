@@ -1,9 +1,7 @@
 try:
     from .model_configs import *
-    from .model_utils import *
 except ImportError:
     from model_configs import *
-    from model_utils import *
 
 import numpy as np
 import tensorflow as tf
