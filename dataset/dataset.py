@@ -184,6 +184,12 @@ class DataLoader(object):
 
                 data = self.augmentation(data)
 
+                # Change data from List of Dictionaries to Dictionary of Lists
+                data = {key: np.stack([d[key] for d in data], axis=0) for key in data[0]}
+                data['key'] = list(map(self.key_dict2arr, data['key']))
+                data['key'] = np.stack(data['key'])
+                data = self.filter_data(data)
+
                 self.batch_count += 1
                 return data
             else:
@@ -192,10 +198,26 @@ class DataLoader(object):
         def __len__(self):
             return int(self.num_batches)
 
-        def filter_data(self):
-            pass
+        @classmethod
+        def key_dict2arr(cls, key_dict: dict) -> np.ndarray:
+            direction_dict = {(1, 0): 1, (0, 0): 0, (0, 1): -1}
+            movement_angle = np.arctan2(direction_dict[(key_dict['up'], key_dict['down'])],
+                                        direction_dict[(key_dict['right'], key_dict['left'])], dtype=np.float32)
+            movement = (0 if key_dict['slow'] else 1) if \
+                (key_dict['up'] or key_dict['down'] or key_dict['right'] or key_dict['left']) else -1
+            output = np.array([np.sin(movement_angle), np.cos(movement_angle), movement], dtype=np.float32)
+            return output
 
-        def augmentation(self, data: list):
+        @classmethod
+        def filter_data(cls, data: dict) -> dict:
+            new_data = {
+                'hit_vision': data['hit_vision'][..., 1:3],
+                'pos': data['pos'][..., 1:3],
+                'key': data['key']
+            }
+            return new_data
+
+        def augmentation(self, data: list) -> list:
             if self.split == 'test':
                 pass
             elif self.split == 'train':
@@ -277,8 +299,7 @@ class DataLoader(object):
             self.seed = random_state.randint(0, (2 ** 32) - 1, dtype=np.uint32)
             return random_state
 
-    def __init__(self, path: str, train_test_split: float, seed: int, preload_level: int, angles: int,
-                 batch_size: int):
+    def __init__(self, path: str, train_test_split: float, seed: int, preload_level: int, angles: int, batch_size: int):
         glob_files = glob.glob(os.path.join(path, '*'))
         np.random.RandomState(seed).shuffle(glob_files)
         test_len = int(np.ceil(len(glob_files) * train_test_split))
@@ -294,7 +315,7 @@ if __name__ == '__main__':
     # dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
     dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
                     train_test_split=0.2, seed=42,
-                    preload_level=0, angles=256, batch_size=1)
+                    preload_level=0, angles=256, batch_size=8)
 
     for data_ in dl.train_ds:
         print(data_)

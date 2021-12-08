@@ -79,11 +79,17 @@ while True:
 #         print(data['ctrl'][0])
 #         break
 
-import tensorflow as tf
+# import tensorflow as tf
+#
+#
+# x = tf.reshape(tf.range(21, dtype=tf.float32), [7, 3])
+# x_transform = tf.convert_to_tensor([-1, -0.5, 0, 0.5, 1, 1.5, 2], dtype=tf.float32)
+# print(x)
+# print(x_transform)
+# print(tf.multiply(x, x_transform))
 
+import numpy as np
 
-x = tf.reshape(tf.range(21, dtype=tf.float32), [7, 3])
-x_transform = tf.convert_to_tensor([-1, -0.5, 0, 0.5, 1, 1.5, 2], dtype=tf.float32)
-print(x)
-print(x_transform)
-print(tf.multiply(x, x_transform))
+n = np.arctan2(True, 1)
+n = np.degrees(n)
+print(n)
