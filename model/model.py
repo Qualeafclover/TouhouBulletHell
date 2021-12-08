@@ -180,7 +180,7 @@ def create_model() -> Model:
         x = dense(x, 128, dropout=0.1, layer_names=layer_names)
         x = dense(x, 64, layer_names=layer_names)
         x = layers.Concatenate(axis=1)([x, x1])
-        x = layers.Dense(MODEL_OUTPUT, activation='sigmoid')(x)
+        x = layers.Dense(MODEL_OUTPUT, activation='tanh')(x)
         return x
 
     np.random.seed(MODEL_SEED)

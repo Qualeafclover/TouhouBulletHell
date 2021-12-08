@@ -2,6 +2,7 @@ checkpoint
 images_v1
 json_dataset
 logs
+images
 model_v1
 simulator
 venv
@@ -9,3 +10,5 @@ venv
 __pycache__
 dataset/__pycache__
 game_master/__pycache__
+logger/__pycache__
+model/__pycache__

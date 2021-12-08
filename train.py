@@ -1,5 +1,5 @@
 from model import create_model
-from images import DataLoader
+from dataset import DataLoader
 from logger import Logger, Timer
 from configs import *
 from logger.tensorboard_log import TensorboardLogger
@@ -13,7 +13,8 @@ import datetime
 
 logger = Logger()
 
-dl = DataLoader()
+dl = DataLoader(TRAIN_DATA_PATH, train_test_split=0.2, seed=42, preload_level=0,
+                angles=256, batch_size=8)
 timer = Timer((len(dl.train_ds) + len(dl.test_ds)) * TRAIN_EPOCHS)
 tbl = TensorboardLogger(writer_names=('train', 'test', 'epoch_avg'))
 cp = Checkpoint()
@@ -35,9 +36,9 @@ timer.start()
 for epoch_num in range(1, TRAIN_EPOCHS+1):
     metrics_loss.reset_states()
     metrics_accuracy.reset_states()
-    for data in dl.train_ds:  # 'player', 'bullet', 'ctrl', 'player_loc', 'vision'
-        x_1, x_2 = data['vision'][..., 1:3], data['player_loc']
-        y = data['ctrl']
+    for data in dl.train_ds:
+        x_1, x_2 = data['hit_vision'], data['pos']
+        y = data['key']
 
         with tf.GradientTape() as tape:
             prediction = model((x_1, x_2), training=True)
