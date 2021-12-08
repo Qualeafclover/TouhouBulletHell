@@ -1,4 +1,8 @@
-from .touhou_configs import *
+if __name__ == '__main__':
+    from game_master.touhou_configs import *
+else:
+    from .touhou_configs import *
+
 from pprint import pprint
 from mem_edit import Process
 import numpy as np

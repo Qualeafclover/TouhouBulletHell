@@ -4,10 +4,13 @@
     <list default="true" id="d844f209-0dce-4a8b-aa43-e67b87b56784" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dataset/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataset/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/game_master/touhou_master.py" beforeDir="false" afterPath="$PROJECT_DIR$/game_master/touhou_master.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/file.png" beforeDir="false" afterPath="$PROJECT_DIR$/model/file.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/model/model_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/loss.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/model_configs.py" beforeDir="false" afterPath="$PROJECT_DIR$/model/model_configs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tensorboard_log/16-27-16_train/events.out.tfevents.1638952037.shin-B550M-AORUS-PRO.26403.0.v2" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tensorboard_log/16-27-17_epoch_avg/events.out.tfevents.1638952037.shin-B550M-AORUS-PRO.26403.2.v2" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tensorboard_log/16-27-17_test/events.out.tfevents.1638952037.shin-B550M-AORUS-PRO.26403.1.v2" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -73,7 +76,7 @@
       <recent name="$PROJECT_DIR$/game_master" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.loss">
+  <component name="RunManager" selected="Python.train">
     <configuration name="dataset (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="TouhouBulletHell" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -233,9 +236,9 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.loss" />
         <item itemvalue="Python.train" />
         <item itemvalue="Python.touhou_master" />
+        <item itemvalue="Python.loss" />
         <item itemvalue="Python.dataset (1)" />
         <item itemvalue="Python.simulator_run" />
       </list>

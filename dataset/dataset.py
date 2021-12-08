@@ -200,7 +200,7 @@ class DataLoader(object):
 
         @classmethod
         def key_dict2arr(cls, key_dict: dict) -> np.ndarray:
-            direction_dict = {(1, 0): 1, (0, 0): 0, (0, 1): -1}
+            direction_dict = {(1, 0): 1, (0, 0): 0, (0, 1): -1, (1, 1): -1}
             movement_angle = np.arctan2(direction_dict[(key_dict['up'], key_dict['down'])],
                                         direction_dict[(key_dict['right'], key_dict['left'])], dtype=np.float32)
             movement = (1 - 0.5 * key_dict['slow']) * \

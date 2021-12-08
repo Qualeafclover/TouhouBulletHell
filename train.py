@@ -1,4 +1,4 @@
-from model import create_model
+from model import create_model, MovementError
 from dataset import DataLoader
 from logger import Logger, Timer
 from configs import *
@@ -7,7 +7,7 @@ from logger.checkpoint import Checkpoint
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import losses, optimizers, metrics
+from tensorflow.keras import optimizers, metrics
 
 import datetime
 
@@ -22,7 +22,7 @@ if tbl.url is not None:
     logger.log(f'Tensorboard started on {tbl.url}')
 
 model = create_model()
-loss_object = losses.MeanSquaredError()
+loss_object = MovementError()
 optimizer = optimizers.Adam(learning_rate=0.001)
 metrics_loss = metrics.Mean(name='loss')
 metrics_accuracy = metrics.BinaryAccuracy(name='accuracy')
