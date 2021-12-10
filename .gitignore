@@ -6,6 +6,8 @@ images
 model_v1
 simulator
 venv
+test
+.ipynb_checkpoints
 .idea
 __pycache__
 dataset/__pycache__

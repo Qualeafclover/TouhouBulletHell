@@ -24,6 +24,24 @@ def name_layer(prefix='Layer', layer_names: list = None) -> str:
     return name
 
 
+def circle_mapping(input_data, layer_names: list = None):
+    name = name_layer('CircleMapping', layer_names=layer_names)
+
+    def layer(x):
+        x = tf.keras.activations.tanh(x)
+        x_, y_ = x[..., 0:1], x[..., 1:2]
+        x_ *= (1 - (y_ ** 2) / 2) ** 0.5
+        y_ *= (1 - (x_ ** 2) / 2) ** 0.5
+        x = layers.Concatenate(axis=1)([y_, x_])
+        return x
+
+    input_layer = layers.Input(shape=(2,))
+    output_tensor = layer(input_layer)
+
+    output_layer = Model(input_layer, output_tensor, name=name)
+    return output_layer(input_data)
+
+
 def dense(input_data, nodes: int, activation=layers.ReLU(), bn=True, activation_first=False, dropout=0.0,
           layer_names: list = None):
     name = name_layer('Dense', layer_names=layer_names)
@@ -123,7 +141,7 @@ def pool1d_loop(input_data, pool_type='max', pool_size=3, strides=2, layer_names
     return output_layer(input_data)
 
 
-# Outdated method
+# Slightly better, but computationally heavy methods
 def conv1d_loop_resnet_block(input_data, input_filters: int, output_filters: int,
                              kernel_size=3, groups=1, activation=layers.ReLU(), down_sample=False):
     x = input_data
@@ -137,6 +155,7 @@ def conv1d_loop_resnet_block(input_data, input_filters: int, output_filters: int
     return x
 
 
+# Slightly better, but computationally heavy methods
 def conv1d_loop_inception_block(input_data, inception_filters: list, bn=True, activation=layers.ReLU(), dropout=0.0,
                                 layer_names: list = None):
     if layer_names is None:
@@ -167,6 +186,7 @@ def create_model() -> Model:
         x = input_data
         x1 = input_loc
 
+        x = layers.BatchNormalization()(x)
         x = conv1d_trans_loop(x, x1, 16, kernel_size=11, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
         x = conv1d_trans_loop(x, x1, 32,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
         x = conv1d_trans_loop(x, x1, 64,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
@@ -179,9 +199,8 @@ def create_model() -> Model:
         x = dense(x, 64, layer_names=layer_names)
         x = layers.Concatenate(axis=1)([x, x1])
 
-        x1 = layers.Dense(2, activation='tanh')(x)
-        x = layers.Dense(1, activation='sigmoid')(x)
-        x = layers.Concatenate(axis=1)([x1, x])
+        x = layers.Dense(2)(x)
+        x = circle_mapping(x, layer_names=layer_names)
         return x
 
     np.random.seed(MODEL_SEED)
@@ -193,53 +212,14 @@ def create_model() -> Model:
     return model_output
 
 
-def create_encoder() -> tf.keras.Model:
-    def model(input_data):
-        x = input_data
-        groups = x.shape[-1]
-
-        x = conv1d_loop(x, filters=32, kernel_size=11, strides=2, groups=groups)
-        x = conv1d_loop(x, filters=64, kernel_size=3, strides=2, groups=groups)
-        x = conv1d_loop(x, filters=128, kernel_size=3, strides=2, groups=groups)
-
-        x = layers.Flatten()(x)
-        return x
-
-    np.random.seed(MODEL_SEED)
-    tf.random.set_seed(MODEL_SEED)
-    input_layer = layers.Input(shape=(MODEL_VISION, 2))
-    output_tensors = model(input_layer)
-    model_output = tf.keras.Model(input_layer, output_tensors)
-    return model_output
-
-
-def create_fc_encoder() -> tf.keras.Model:
-    def model(encoded, position, test_val):
-        x = layers.Concatenate(axis=1)([encoded, position, test_val])
-        x = layers.Dense(512, activation='relu')(x)
-        x = layers.Dense(128, activation='relu')(x)
-        x = layers.Dense(1)(x)
-
-        return x
-
-    np.random.seed(MODEL_SEED)
-    tf.random.set_seed(MODEL_SEED)
-    encoded_in = layers.Input(shape=(32 * 128,))  # 4098
-    position_in = layers.Input(shape=(2,))
-    test_val_in = layers.Input(shape=(5,))
-    output_tensors = model(encoded_in, position_in, test_val_in)
-    model_output = tf.keras.Model((encoded_in, position_in, test_val_in), output_tensors)
-    return model_output
-
-
 if __name__ == '__main__':
     loop_net = create_model()
     loop_net.summary()
     print()
 
-    in_ = (tf.random.uniform(shape=(2, MODEL_VISION, 2)),
-           tf.random.uniform(shape=(2, 2)))
-    out = loop_net(in_)
+    in_ = (tf.random.uniform(shape=(16, MODEL_VISION, 2)),
+           tf.random.uniform(shape=(16, 2)))
+    out = loop_net(in_, training=True)
     print(out)
 
     # a = loop_net.save_weights('/home/shin/Desktop/TouhouBulletHell/checkpoint/cp-01')

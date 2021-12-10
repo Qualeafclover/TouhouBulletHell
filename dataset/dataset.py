@@ -205,7 +205,8 @@ class DataLoader(object):
                                         direction_dict[(key_dict['right'], key_dict['left'])], dtype=np.float32)
             movement = (1 - 0.5 * key_dict['slow']) * \
                        (key_dict['up'] or key_dict['down'] or key_dict['right'] or key_dict['left'])
-            output = np.array([np.sin(movement_angle), np.cos(movement_angle), movement], dtype=np.float32)
+            # output = np.array([np.sin(movement_angle), np.cos(movement_angle), movement], dtype=np.float32)
+            output = np.array([movement * np.sin(movement_angle), movement * np.cos(movement_angle)], dtype=np.float32)
             return output
 
         @classmethod
@@ -315,7 +316,9 @@ if __name__ == '__main__':
     # dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
     dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
                     train_test_split=0.2, seed=42,
-                    preload_level=0, angles=256, batch_size=2)
+                    preload_level=0, angles=256, batch_size=1)
+
+    dl.train_ds.batch_count = 1047
 
     for data_ in dl.train_ds:
         print(data_)

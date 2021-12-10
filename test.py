@@ -88,13 +88,25 @@ while True:
 # print(x_transform)
 # print(tf.multiply(x, x_transform))
 
+# import tensorflow as tf
+# import numpy as np
+#
+# # UP LEFT
+# n = np.arctan2(1, -1)
+# n = np.sin(n), np.cos(n)
+# print(n)
+#
+# n = tf.math.atan2(n[1], n[0])
+# print(np.degrees(n))
+
 import tensorflow as tf
-import numpy as np
 
-# UP LEFT
-n = np.arctan2(1, -1)
-n = np.sin(n), np.cos(n)
-print(n)
+print(tf.version)
+inp = tf.keras.layers.Input(
+shape=[3],
+dtype=tf.dtypes.float32
+)
+print(inp)
 
-n = tf.math.atan2(n[1], n[0])
-print(np.degrees(n))
+t = inp[..., 1]
+print(t)
