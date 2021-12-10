@@ -213,7 +213,7 @@ class DataLoader(object):
         def filter_data(cls, data: dict) -> dict:
             new_data = {
                 'hit_vision': data['hit_vision'][..., 1:3],
-                'pos': data['pos'][..., 1:3],
+                'pos': np.stack([data['pos'][..., 1] / 200, (data['pos'][..., 2] - 225) / 450], axis=1),
                 'key': data['key']
             }
             return new_data
@@ -313,8 +313,8 @@ class DataLoader(object):
 
 
 if __name__ == '__main__':
-    # dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
-    dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
+    dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
+    # dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
                     train_test_split=0.2, seed=42,
                     preload_level=0, angles=256, batch_size=1)
 

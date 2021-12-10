@@ -30,8 +30,8 @@ def circle_mapping(input_data, layer_names: list = None):
     def layer(x):
         x = tf.keras.activations.tanh(x)
         x_, y_ = x[..., 0:1], x[..., 1:2]
-        x_ *= (1 - (y_ ** 2) / 2) ** 0.5
-        y_ *= (1 - (x_ ** 2) / 2) ** 0.5
+        x_ *= tf.math.sqrt(1 - tf.math.square(y_) / 2)
+        y_ *= tf.math.sqrt(1 - tf.math.square(x_) / 2)
         x = layers.Concatenate(axis=1)([y_, x_])
         return x
 
@@ -186,7 +186,7 @@ def create_model() -> Model:
         x = input_data
         x1 = input_loc
 
-        x = layers.BatchNormalization()(x)
+        x1 = layers.BatchNormalization()(x1)
         x = conv1d_trans_loop(x, x1, 16, kernel_size=11, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
         x = conv1d_trans_loop(x, x1, 32,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
         x = conv1d_trans_loop(x, x1, 64,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
@@ -221,8 +221,8 @@ if __name__ == '__main__':
            tf.random.uniform(shape=(16, 2)))
     out = loop_net(in_, training=True)
     print(out)
-
-    # a = loop_net.save_weights('/home/shin/Desktop/TouhouBulletHell/checkpoint/cp-01')
-    # print(a)
-    from tensorflow.keras.utils import plot_model
-    plot_model(loop_net, 'file.png', show_shapes=True)
+    #
+    # # a = loop_net.save_weights('/home/shin/Desktop/TouhouBulletHell/checkpoint/cp-01')
+    # # print(a)
+    # from tensorflow.keras.utils import plot_model
+    # plot_model(loop_net, 'file.png', show_shapes=True)

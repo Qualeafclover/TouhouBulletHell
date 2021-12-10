@@ -9,7 +9,7 @@ class Logger(object):
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
         now = datetime.datetime.now()
-        log_filename = now.strftime('|%Y_%m_%d|%H_%M_%S|.txt')
+        log_filename = now.strftime('-%Y_%m_%d-%H_%M_%S-.txt')
         self.verbose = verbose
         self.log_path = os.path.join(logdir, log_filename)
         self.log_start_time()

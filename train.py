@@ -58,13 +58,13 @@ for epoch_num in range(1, TRAIN_EPOCHS+1):
             avg_loss=f'{metrics_loss.result():.3f}',
             # avg_accuracy=f'{metrics_accuracy.result():.3f}',
             loss=f'{loss.numpy():.3f}',
-            accuracy=f'{np.mean(metrics.binary_accuracy(y, prediction)):.3f}',
+            # accuracy=f'{np.mean(metrics.binary_accuracy(y, prediction)):.3f}',
             sample_x=prediction.numpy()[0].round(3),
             sample_y=y[0].round(3),
         )
         tbl.write_summary(
             loss=float(loss.numpy()),
-            accuracy=float(np.mean(metrics.binary_accuracy(y, prediction))),
+            # accuracy=float(np.mean(metrics.binary_accuracy(y, prediction))),
             writer='train',
             step=step,
         )
