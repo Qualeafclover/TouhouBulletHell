@@ -1,7 +1,4 @@
-try:
-    from .model_configs import *
-except ImportError:
-    from model_configs import *
+from configs import *
 
 import numpy as np
 import tensorflow as tf

@@ -99,17 +99,26 @@ while True:
 # n = tf.math.atan2(n[1], n[0])
 # print(np.degrees(n))
 
-import tensorflow as tf
+# import tensorflow as tf
+#
+# print(tf.version)
+# inp = tf.keras.layers.Input(
+# shape=[3],
+# dtype=tf.dtypes.float32
+# )
+# print(inp)
+#
+# t = inp[..., 1]
+# print(t)
 
-print(tf.version)
-inp = tf.keras.layers.Input(
-shape=[3],
-dtype=tf.dtypes.float32
-)
-print(inp)
 
-t = inp[..., 1]
-print(t)
+import logging
 
+logger = logging.Logger('Test Logger')
 
-
+logger.log(0, "Good day!")
+logger.log(10, "I help in debugging!")
+logger.log(20, "Here is a useful info!")
+logger.log(30, "I'll have to warn you about this!")
+logger.log(40, "Oh no it's an error!")
+logger.log(50, "Oh no it's a critical error!")

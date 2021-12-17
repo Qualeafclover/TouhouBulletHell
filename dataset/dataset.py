@@ -301,7 +301,8 @@ class DataLoader(object):
             self.seed = random_state.randint(0, (2 ** 32) - 1, dtype=np.uint32)
             return random_state
 
-    def __init__(self, path: str, train_test_split: float, seed: int, preload_level: int, angles: int, batch_size: int):
+    def __init__(self, path=DATASET_PATH, train_test_split=DATASET_TTS, seed=DATASET_SEED,
+                 preload_level=DATASET_PRELOAD_LEVEL, angles=DATASET_ANGLES, batch_size=DATASET_BATCH_SIZE):
         glob_files = glob.glob(os.path.join(path, '*'))
         np.random.RandomState(seed).shuffle(glob_files)
         test_len = int(np.ceil(len(glob_files) * train_test_split))
@@ -315,11 +316,7 @@ class DataLoader(object):
 
 if __name__ == '__main__':
     # dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
-    dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
-                    train_test_split=0.2, seed=42,
-                    preload_level=0, angles=256, batch_size=1)
-
-    dl.train_ds.batch_count = 1047
+    dl = DataLoader()
 
     for data_ in dl.train_ds:
         print(data_)
