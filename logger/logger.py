@@ -1,4 +1,4 @@
-from .logger_configs import *
+from configs import *
 
 import os
 import datetime

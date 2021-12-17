@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .tensorboard_configs import *
+from configs import *
 
 from tensorboard import program
 from datetime import datetime

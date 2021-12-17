@@ -186,7 +186,6 @@ def create_model() -> Model:
         x = input_data
         x1 = input_loc
 
-        x1 = layers.BatchNormalization()(x1)
         x = conv1d_trans_loop(x, x1, 16, kernel_size=11, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
         x = conv1d_trans_loop(x, x1, 32,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
         x = conv1d_trans_loop(x, x1, 64,  kernel_size=3, strides=2, bn=True, dropout=0.2, layer_names=layer_names)
@@ -221,8 +220,8 @@ if __name__ == '__main__':
            tf.random.uniform(shape=(16, 2)))
     out = loop_net(in_, training=True)
     print(out)
-    #
-    # # a = loop_net.save_weights('/home/shin/Desktop/TouhouBulletHell/checkpoint/cp-01')
-    # # print(a)
-    # from tensorflow.keras.utils import plot_model
-    # plot_model(loop_net, 'file.png', show_shapes=True)
+
+    # a = loop_net.save_weights('/home/shin/Desktop/TouhouBulletHell/checkpoint/cp-01')
+    # print(a)
+    from tensorflow.keras.utils import plot_model
+    plot_model(loop_net, 'file.png', show_shapes=True)

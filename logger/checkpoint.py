@@ -1,7 +1,7 @@
 import tensorflow as tf
 import os
 
-from .checkpoint_configs import *
+from configs import *
 
 
 class Checkpoint(object):

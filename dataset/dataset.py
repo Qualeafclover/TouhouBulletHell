@@ -1,3 +1,4 @@
+from configs import *
 import os
 import cv2
 import glob
@@ -313,8 +314,8 @@ class DataLoader(object):
 
 
 if __name__ == '__main__':
-    dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
-    # dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
+    # dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
+    dl = DataLoader(path='/home/shin/Desktop/TouhouBulletHell/json_dataset',
                     train_test_split=0.2, seed=42,
                     preload_level=0, angles=256, batch_size=1)
 

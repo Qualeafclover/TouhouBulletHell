@@ -110,3 +110,6 @@ print(inp)
 
 t = inp[..., 1]
 print(t)
+
+
+

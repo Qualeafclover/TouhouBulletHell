@@ -13,7 +13,7 @@ import datetime
 
 logger = Logger()
 
-dl = DataLoader(TRAIN_DATA_PATH, train_test_split=0.2, seed=42, preload_level=0, angles=256, batch_size=8)
+dl = DataLoader(TRAIN_DATA_PATH, train_test_split=0.2, seed=42, preload_level=0, angles=256, batch_size=16)
 timer = Timer((len(dl.train_ds) + len(dl.test_ds)) * TRAIN_EPOCHS)
 tbl = TensorboardLogger(writer_names=('train', 'test', 'epoch_avg'))
 cp = Checkpoint()
