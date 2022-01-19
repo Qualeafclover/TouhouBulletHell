@@ -20,6 +20,7 @@ import gi
 gi.require_version('Gdk', '3.0')
 from gi.repository import Gdk
 
+
 def xwininfo(win_name:str) -> dict:
     stdout = subprocess.check_output(['xwininfo', '-name', win_name])
     stdout = stdout.decode()
@@ -31,8 +32,10 @@ def xwininfo(win_name:str) -> dict:
     }
     return output
 
+
 def get_pid(name:str) -> int:
     return int(subprocess.check_output(['pidof', name])) # Fails if more than 1 process detected
+
 
 @dataclasses.dataclass(frozen=True)
 class KeyState(object):
@@ -44,6 +47,7 @@ class KeyState(object):
     left:  bool = False
     right: bool = False
     skip:  bool = False
+
 
 class GameKeyIO(object):
     def __init__(self, process, address=GAME_KEYS_ADDR,
@@ -70,6 +74,7 @@ class GameKeyIO(object):
 
     def __str__(self):
         return str(self.read())
+
 
 class GamePosIO(object):
     def __init__(self, process,
@@ -111,6 +116,7 @@ class GamePosIO(object):
     def __str__(self):
         return str(self.read())
 
+
 class GameIO(object):
     def __init__(self, process, address:hex, ctype:ctypes._SimpleCData,
                  enable:str=None, disable:str=None, translator:dict=None):
@@ -140,6 +146,7 @@ class GameIO(object):
     def __str__(self):
         return str(self.read())
 
+
 class FPS(object):
     class TimerNotStartedError(Exception): pass
 
@@ -161,6 +168,7 @@ class FPS(object):
 
     def __str__(self):
         return str(self.get_fps())
+
 
 class NestedPointers(object):
     def __init__(self, process, pointer_address:hex, list_ctype:hex, pointer_offset:hex,
@@ -236,6 +244,7 @@ class ScreenShot(object):
                     return nparr
                 else:
                     return None
+
 
 class TouhouMaster(object):
     def __init__(self):

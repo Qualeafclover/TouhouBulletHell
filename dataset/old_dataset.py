@@ -18,57 +18,12 @@ class DatasetConfigs(object):
     seed: int = DATASET_SEED
     preload_level: int = DATASET_PRELOAD_LEVEL
     angles: int = DATASET_ANGLES
-    train_batch_size: int = DATASET_TRAIN_BATCH_SIZE
-    test_batch_size: int = DATASET_TEST_BATCH_SIZE
+    batch_size: int = DATASET_BATCH_SIZE
     data_style: str = DATASET_DATA_STYLE
-    stack_style: str = DATASET_STACK_STYLE
     stacks: int = DATASET_STACKS
     stack_frame_skip: int = DATASET_STACK_FRAME_SKIP
+    stack_drop: bool = DATASET_STACK_DROP  # ??
     smoothen: int = DATASET_SMOOTHEN
-
-
-class DatasetIndexer(object):
-    def __init__(self, sorted_data: list, configs: DatasetConfigs):
-        self.configs = configs
-        self.index = None
-
-        prev_sums = 0
-        for recording_num, recording in enumerate(sorted_data):
-            candidate_nums = np.array(list(map((lambda s: int(os.path.splitext(os.path.split(s)[1])[0])), recording)))
-            target_index = np.stack(
-                [candidate_nums - (n * self.configs.stack_frame_skip)
-                 for n in range(self.configs.stacks)], axis=1).reshape((len(recording) * self.configs.stacks,))
-            select_index = np.array(
-                list(map((lambda n: np.argmin(np.abs(candidate_nums - n))),
-                         target_index))).reshape((len(recording), self.configs.stacks))
-            select_index += prev_sums
-
-            prev_sums += len(sorted_data[recording_num])
-            if recording_num == 0:
-                self.index = select_index
-            else:
-                self.index = np.concatenate([self.index, select_index])
-
-    def random(self, new_seed: bool = True):
-        random_state = np.random.RandomState(self.configs.seed)
-        if new_seed:
-            self.configs.seed = random_state.randint(0, (2 ** 32) - 1, dtype=np.uint32)
-        return random_state
-
-    def get_filtered(self, shuffle=True) -> np.ndarray:
-        output = np.array([])
-        if self.configs.stack_style == 'use_all':
-            output = self.index
-        if self.configs.stack_style == 'skip_dupes':
-            output = np.array([v for v in self.index if len(set(v)) == len(v)])
-        if self.configs.stack_style == 'skip_all':
-            pass
-        if shuffle:
-            self.random().shuffle(output)
-        return output
-
-    def __len__(self):
-        return self.index.shape[0]
 
 
 class ProgressBar(object):
@@ -104,6 +59,19 @@ class ProgressBar(object):
         if progress == 1.0:
             text += '\n'
         print(f'\r{text}', end='')
+
+
+class MemoryGlobber(object):
+    def __init__(self):
+        self.previous_request = None
+        self.previous_output = None
+
+    def glob(self, *args, **kwargs):
+        request = args, kwargs
+        if request != self.previous_request:
+            self.previous_request = args, kwargs
+            self.previous_output = glob.glob(*args, **kwargs)
+        return self.previous_output
 
 
 def pol2cart(rho: float, phi: float, origin=(0., 0.)) -> typing.Tuple[float, float]:
@@ -208,52 +176,50 @@ class DataLoader(object):
         def __init__(self, data_files: typing.Iterable[str], split: str, configs: DatasetConfigs):
             self.split = split
             self.configs = configs
+            self._memory_glob = MemoryGlobber()
 
-            self.batch_size = None
-            if self.split == 'test':
-                self.batch_size = self.configs.test_batch_size
-            if self.split == 'train':
-                self.batch_size = self.configs.train_batch_size
-
-            data = list(sorted(glob.glob(os.path.join(data_file, '*.json'))) for data_file in data_files)
-            self.indexer = DatasetIndexer(data, configs=configs)
+            data = (glob.glob(os.path.join(data_file, '*.json')) for data_file in data_files)
             data = [item for sublist in data for item in sublist]
 
-            if self.configs.preload_level >= 1:  # Load to json
-                self.pb = ProgressBar(total=len(data), prefix=f'Preload 1/{self.configs.preload_level} (to json)')
-                data = list(map(self.path2json, data, itertools.repeat(True)))
-            if self.configs.preload_level >= 2:  # Load to array
-                self.pb = ProgressBar(total=len(data), prefix=f'Preload 2/{self.configs.preload_level} (to array)')
+            if self.configs.stack_drop:
+                data = list(filter(self.stack_drop, data))
+            if self.split == 'test':
+                self.configs.batch_size = 1
+
+            if self.configs.preload_level >= 1:  # Cluster files
+                self.pb = ProgressBar(total=len(data), prefix=f'Preload 1/{self.configs.preload_level} (to stack)')
+                data = list(map(self.path2stack, data, itertools.repeat(True)))
+            if self.configs.preload_level >= 2:  # Load to json
+                self.pb = ProgressBar(total=len(data), prefix=f'Preload 2/{self.configs.preload_level} (to json)')
+                data = list(map(self.stack2json, data, itertools.repeat(True)))
+            if self.configs.preload_level >= 3:  # Load to array
+                self.pb = ProgressBar(total=len(data), prefix=f'Preload 3/{self.configs.preload_level} (to array)')
                 data = list(map(self.json2array, data, itertools.repeat(True)))
-            if (self.configs.preload_level >= 3) and (self.configs.data_style != 'raw'):  # Load to vision array
-                self.pb = ProgressBar(total=len(data), prefix=f'Preload 3/{self.configs.preload_level} (to vision)')
+            if self.configs.preload_level >= 4:  # Load to vision array
+                self.pb = ProgressBar(total=len(data), prefix=f'Preload 4/{self.configs.preload_level} (to vision)')
                 data = list(map(self.array2vision, data, itertools.repeat(True)))
 
             self.data = data
-            self.num_batches = np.floor(len(self.indexer.get_filtered(shuffle=False)) / self.batch_size)
+            self.num_batches = np.floor(len(self.data) / self.configs.batch_size)
             self.batch_count = None
-            self.indexes = None
 
         def __iter__(self):
             if self.split == 'train':
-                self.indexes = self.indexer.get_filtered(shuffle=True)
-            if self.split == 'test':
-                self.indexes = self.indexer.get_filtered(shuffle=True)
+                self.random().shuffle(self.data)
             self.batch_count = 0
             return self
 
         def __next__(self):
             if self.batch_count < self.num_batches:
-                index = np.array(list(self.indexes[self.batch_count * self.batch_size + n]
-                                      for n in range(self.batch_size)))
-                index = index.reshape((index.shape[0] * index.shape[1],))
+                data = self.data[self.batch_count*self.configs.batch_size:(self.batch_count+1)*self.configs.batch_size]
 
-                data = (self.data[n] for n in index)
                 if self.configs.preload_level < 1:
-                    data = list(map(self.path2json, data))  # False positive error
+                    data = list(map(self.path2stack, data))
                 if self.configs.preload_level < 2:
+                    data = list(map(self.stack2json, data))
+                if self.configs.preload_level < 3:
                     data = list(map(self.json2array, data))
-                if (self.configs.preload_level < 3) and (self.configs.data_style != 'raw'):
+                if self.configs.preload_level < 4:
                     data = list(map(self.array2vision, data))
 
                 data = self.augmentation(data)
@@ -262,7 +228,6 @@ class DataLoader(object):
                 data = {key: np.stack([d[key] for d in data], axis=0) for key in data[0]}
                 data['key'] = list(map(self.key_dict2arr, data['key']))
                 data['key'] = np.stack(data['key'])
-                data = self.restack_data(data)
                 data = self.filter_data(data)
 
                 self.batch_count += 1
@@ -272,20 +237,6 @@ class DataLoader(object):
 
         def __len__(self):
             return int(self.num_batches)
-
-        def restack_data(self, data: dict) -> dict:
-            new_data = {
-                'hit_vision': data['hit_vision'].reshape(
-                    (data['hit_vision'].shape[0]//self.configs.stacks, self.configs.stacks, ) +
-                    data['hit_vision'].shape[1:]),
-                'pos': data['pos'].reshape(
-                    (data['pos'].shape[0]//self.configs.stacks, self.configs.stacks, ) +
-                    data['pos'].shape[1:]),
-                'key': data['key'].reshape(
-                    (data['key'].shape[0]//self.configs.stacks, self.configs.stacks, ) +
-                    data['key'].shape[1:])[:, 0, :]
-            }
-            return new_data
 
         @classmethod
         def key_dict2arr(cls, key_dict: dict) -> np.ndarray:
@@ -339,55 +290,79 @@ class DataLoader(object):
             data['pos'][2] = 450 - data['pos'][2]
             return data
 
-        def path2json(self, path: str, verbose: bool = False) -> dict:
-            with open(path, 'r') as f:
-                json_data = json.load(f)
+        def stack_drop(self, path: str):
+            self_number = int(os.path.splitext(os.path.split(path)[1])[0])
+            threshold = self.configs.stacks * self.configs.stack_frame_skip
+            return self_number > threshold
+
+        def path2stack(self, path: str, verbose: bool = False) -> list:
+            candidates = self._memory_glob.glob(f'{os.path.split(path)[0]}/*.json')
+            candidate_nums = np.array(list(map((lambda s: int(os.path.splitext(os.path.split(s)[1])[0])), candidates)))
+            self_number = int(os.path.splitext(os.path.split(path)[1])[0])
+            target_numbers = range(self_number - (self.configs.stacks * self.configs.stack_frame_skip), self_number,
+                                   self.configs.stack_frame_skip)
+            selected_index = map((lambda n: np.argmin(np.abs(candidate_nums - n))), target_numbers)
+            stacks = list(map((lambda n: candidates[n]), selected_index))
             if verbose:
                 self.pb.progress()
                 self.pb.print(path)
+            return stacks
+
+        def stack2json(self, stack: list, verbose: bool = False) -> list:
+            def load_json(path):
+                with open(path, 'r') as f:
+                    return json.load(f)
+
+            json_data = list(map(load_json, stack))
+            if verbose:
+                self.pb.progress()
+                self.pb.print(stack[0])
             return json_data
 
-        def json2array(self, json_data: dict, verbose: bool = False) -> dict:
-            enemies = json_data['enemy']
-            bullets = json_data['bullet']
-            key = json_data['key']
-            pos = json_data['pos']
+        def json2array(self, json_data_list: list, verbose: bool = False) -> list:
+            def to_array(json_data):
+                enemies = json_data['enemy']
+                bullets = json_data['bullet']
+                key = json_data['key']
+                pos = json_data['pos']
 
-            hit_array = np.zeros(shape=(450, 400), dtype=np.uint8)
-            for x, y, d, t in zip(enemies['x'], enemies['y'],
-                                  enemies['diameter'], enemies['type']):
-                if t != 0:
-                    x, y, r = int(round(x + 200)), int(round(y)), int(np.ceil(round(d / 2)))
-                    hit_array = cv2.circle(hit_array, (x, y), r, 255, -1)
+                hit_array = np.zeros(shape=(450, 400), dtype=np.uint8)
+                for x, y, d, t in zip(enemies['x'], enemies['y'],
+                                      enemies['diameter'], enemies['type']):
+                    if t != 0:
+                        x, y, r = int(round(x + 200)), int(round(y)), int(np.ceil(round(d / 2)))
+                        hit_array = cv2.circle(hit_array, (x, y), r, 255, -1)
 
-            for x, y, r, rm in zip(bullets['x'], bullets['y'],
-                                   bullets['radius'], bullets['radius_mult']):
-                x, y, r = int(round(x + 200)), int(round(y)), int(np.ceil(round(r * rm)))
-                hit_array = cv2.circle(hit_array, (x, y), r, (255, 0, 0), -1)
+                for x, y, r, rm in zip(bullets['x'], bullets['y'],
+                                       bullets['radius'], bullets['radius_mult']):
+                    x, y, r = int(round(x + 200)), int(round(y)), int(np.ceil(round(r * rm)))
+                    hit_array = cv2.circle(hit_array, (x, y), r, (255, 0, 0), -1)
 
-            array_data = {'hit_array': hit_array, 'key': key, 'pos': pos}
+                return {'hit_array': hit_array, 'key': key, 'pos': pos}
+            array_data = list(map(to_array, json_data_list))
             if verbose:
                 self.pb.progress()
                 self.pb.print()
             return array_data
 
-        def array2vision(self, array_data: dict, verbose: bool = False) -> dict:
-            pos = array_data['pos'][1] + 200, array_data['pos'][2]
-            hit_vision = get_vision(pos=pos, angles=self.configs.angles, img=array_data['hit_array'])
-            vision_data = {
-                'hit_vision': hit_vision,
-                'key': array_data['key'], 'pos': array_data['pos']
-            }
+        def array2vision(self, array_data_list: list, verbose: bool = False) -> list:
+            def to_vision(array_data: dict):
+                pos = array_data['pos'][1] + 200, array_data['pos'][2]
+                hit_vision = get_vision(pos=pos, angles=self.configs.angles, img=array_data['hit_array'])
+                return {
+                    'hit_vision': hit_vision,
+                    'key': array_data['key'], 'pos': array_data['pos']
+                }
+            vision_data = list(map(to_vision, array_data_list))
             if verbose:
                 # canvas = draw_polar_lines(array_data['hit_array'], pos, False, hit_vision, 150, 1)
                 self.pb.progress()
                 self.pb.print()
             return vision_data
 
-        def random(self, new_seed: bool = True):
+        def random(self):
             random_state = np.random.RandomState(self.configs.seed)
-            if new_seed:
-                self.configs.seed = random_state.randint(0, (2 ** 32) - 1, dtype=np.uint32)
+            self.configs.seed = random_state.randint(0, (2 ** 32) - 1, dtype=np.uint32)
             return random_state
 
     def __init__(self, configs=DatasetConfigs()):
@@ -403,9 +378,7 @@ class DataLoader(object):
 if __name__ == '__main__':
     # dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
     dl = DataLoader()
-    # for data_ in dl.test_ds:
-        # print(data_['key'])
-        # pass
+
     for data_ in dl.train_ds:
-        print(data_['key'])
-        pass
+        print(data_)
+        break

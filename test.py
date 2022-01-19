@@ -112,13 +112,28 @@ while True:
 # print(t)
 
 
-import logging
+# import logging
+#
+# logger = logging.Logger('Test Logger')
+#
+# logger.log(0, "Good day!")
+# logger.log(10, "I help in debugging!")
+# logger.log(20, "Here is a useful info!")
+# logger.log(30, "I'll have to warn you about this!")
+# logger.log(40, "Oh no it's an error!")
+# logger.log(50, "Oh no it's a critical error!")
 
-logger = logging.Logger('Test Logger')
+import glob
+import os
 
-logger.log(0, "Good day!")
-logger.log(10, "I help in debugging!")
-logger.log(20, "Here is a useful info!")
-logger.log(30, "I'll have to warn you about this!")
-logger.log(40, "Oh no it's an error!")
-logger.log(50, "Oh no it's a critical error!")
+files = glob.glob('json_dataset/*')
+for file in files:
+    json_paths = glob.glob(os.path.join(file, '*'))
+
+    def cvt_name(old_name):
+        stuff_before, name_only = os.path.split(old_name)
+        new_name = os.path.join(stuff_before, (12-len(name_only))*'0'+name_only)
+        os.rename(old_name, new_name)
+        return new_name
+
+    print(list(map(cvt_name, json_paths)))
