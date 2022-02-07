@@ -18,6 +18,7 @@ class DatasetConfigs(object):
     seed: int = DATASET_SEED
     preload_level: int = DATASET_PRELOAD_LEVEL
     angles: int = DATASET_ANGLES
+    deep_vision_depth: int = DATASET_DEEP_VISION_DEPTH
     train_batch_size: int = DATASET_TRAIN_BATCH_SIZE
     test_batch_size: int = DATASET_TEST_BATCH_SIZE
     data_style: str = DATASET_DATA_STYLE
@@ -112,13 +113,15 @@ def pol2cart(rho: float, phi: float, origin=(0., 0.)) -> typing.Tuple[float, flo
     return x+origin[0], y+origin[1]
 
 
-def get_vision(pos: typing.Union[tuple, list], angles: int, img: np.ndarray) -> np.ndarray:
+def get_vision(pos: typing.Union[tuple, list], angles: int, img: np.ndarray, mode='simple_vision') -> np.ndarray:
     r"""
     :param pos: float axis coordinates, (x, y)
     :param angles: number of lines to draw
     :param img: 2d numpy array
+    :param mode: vision method, must be "simple_vision" or "deep_vision"
     :return: array in format [[angles in radians], [distances], [1 for bullet, 0 for wall hit]]
     """
+    assert mode in ('simple_vision', 'deep_vision')
     shape = img.shape
     if len(shape) == 2:
         h, w = shape
@@ -136,19 +139,35 @@ def get_vision(pos: typing.Union[tuple, list], angles: int, img: np.ndarray) -> 
     check_lines = map(np.linspace,
                       itertools.repeat(pos), check_lines, itertools.repeat(max_len))  # x, y positions to check
 
-    check_lines = map(
-        (lambda arr:
-         np.delete(arr, np.where(
-             (w <= arr[:, 0]) | (arr[:, 0] <= 0) |
-             (h <= arr[:, 1]) | (arr[:, 1] <= 0)
-         )[0], axis=0)),
-        check_lines)  # x, y all points to check, excluding out of bounds
+    if mode == 'simple_vision':
+        check_lines = map(
+            (lambda arr:
+             np.delete(arr, np.where(
+                 (w <= arr[:, 0]) | (arr[:, 0] <= 0) |
+                 (h <= arr[:, 1]) | (arr[:, 1] <= 0)
+             )[0], axis=0)),
+            check_lines)  # x, y all points to check, excluding out of bounds
+
+    elif mode == 'deep_vision':  # TODO you left off here trying to make the out of bounds visible from the output array
+        check_lines = map(
+            (lambda arr: np.where(
+                ~np.stack([(w <= arr[:, 0]) | (arr[:, 0] <= 0) | (h <= arr[:, 1]) | (arr[:, 1] <= 0)] * 2, axis=-1),
+                arr, np.full_like(arr, pos)
+            )),
+            check_lines)  # x, y all points to check, replacing out of bounds with None
 
     lines = list(map(
         (lambda arr:
          img[arr[:, 1].astype(int), arr[:, 0].astype(int)]
          ),
         check_lines))  # values of images on check_line positions
+
+    if mode == 'deep_vision':
+        lines = np.stack(lines)
+        print(lines.shape)
+        cv2.imshow('', lines)
+        cv2.waitKey(0)
+        quit()
 
     line_switches = map(
         (lambda arr:
@@ -225,7 +244,7 @@ class DataLoader(object):
             if self.configs.preload_level >= 2:  # Load to array
                 self.pb = ProgressBar(total=len(data), prefix=f'Preload 2/{self.configs.preload_level} (to array)')
                 data = list(map(self.json2array, data, itertools.repeat(True)))
-            if (self.configs.preload_level >= 3) and (self.configs.data_style != 'raw'):  # Load to vision array
+            if self.configs.preload_level >= 3:  # Load to vision array
                 self.pb = ProgressBar(total=len(data), prefix=f'Preload 3/{self.configs.preload_level} (to vision)')
                 data = list(map(self.array2vision, data, itertools.repeat(True)))
 
@@ -250,10 +269,10 @@ class DataLoader(object):
 
                 data = (self.data[n] for n in index)
                 if self.configs.preload_level < 1:
-                    data = list(map(self.path2json, data))  # False positive error
+                    data = list(map(self.path2json, data))  # False positive warning
                 if self.configs.preload_level < 2:
                     data = list(map(self.json2array, data))
-                if (self.configs.preload_level < 3) and (self.configs.data_style != 'raw'):
+                if self.configs.preload_level < 3:
                     data = list(map(self.array2vision, data))
 
                 data = self.augmentation(data)
@@ -263,6 +282,7 @@ class DataLoader(object):
                 data['key'] = list(map(self.key_dict2arr, data['key']))
                 data['key'] = np.stack(data['key'])
                 data = self.restack_data(data)
+                print(data['X'].shape)
                 data = self.filter_data(data)
 
                 self.batch_count += 1
@@ -275,9 +295,9 @@ class DataLoader(object):
 
         def restack_data(self, data: dict) -> dict:
             new_data = {
-                'hit_vision': data['hit_vision'].reshape(
-                    (data['hit_vision'].shape[0]//self.configs.stacks, self.configs.stacks, ) +
-                    data['hit_vision'].shape[1:]),
+                'X': data['X'].reshape(
+                    (data['X'].shape[0]//self.configs.stacks, self.configs.stacks, ) +
+                    data['X'].shape[1:]),
                 'pos': data['pos'].reshape(
                     (data['pos'].shape[0]//self.configs.stacks, self.configs.stacks, ) +
                     data['pos'].shape[1:]),
@@ -298,13 +318,21 @@ class DataLoader(object):
             output = np.array([movement * np.sin(movement_angle), movement * np.cos(movement_angle)], dtype=np.float32)
             return output
 
-        @classmethod
-        def filter_data(cls, data: dict) -> dict:
-            new_data = {
-                'hit_vision': data['hit_vision'][..., 1:3],
-                'pos': np.stack([data['pos'][..., 1] / 200, (data['pos'][..., 2] - 225) / 450], axis=1),
-                'key': data['key']
-            }
+        def filter_data(self, data: dict) -> dict:
+            if self.configs.data_style == 'raw':
+                new_data = {
+                    'X': data['X'],
+                    'pos': np.stack([data['pos'][..., 1] / 200, (data['pos'][..., 2] - 225) / 450], axis=1),
+                    'key': data['key']
+                }
+            elif self.configs.data_style == 'simple_vision':
+                new_data = {
+                    'X': data['X'][..., 1:3],  # Removes the radians from the X data
+                    'pos': np.stack([data['pos'][..., 1] / 200, (data['pos'][..., 2] - 225) / 450], axis=1),
+                    'key': data['key']
+                }
+            else:
+                raise NotImplementedError
             return new_data
 
         def augmentation(self, data: list) -> list:
@@ -324,17 +352,17 @@ class DataLoader(object):
 
         @classmethod
         def aug_flip_lr(cls, data: dict) -> dict:
-            angles = data['hit_vision'].shape[0]
-            data['hit_vision'][:, 1:3] = np.roll(np.roll(data['hit_vision'][:, 1:3],
-                                                 -int(round(angles/4)), axis=0)[::-1],
-                                                 int(round(angles/4)) + 1, axis=0)
+            angles = data['X'].shape[0]
+            data['X'][:, 1:3] = np.roll(np.roll(data['X'][:, 1:3],
+                                                -int(round(angles/4)), axis=0)[::-1],
+                                        int(round(angles/4)) + 1, axis=0)
             data['key']['left'], data['key']['right'] = data['key']['right'], data['key']['left']
             data['pos'][1] = -data['pos'][1]
             return data
 
         @classmethod
         def aug_flip_ud(cls, data: dict) -> dict:
-            data['hit_vision'][:, 1:3] = np.roll(data['hit_vision'][::-1, 1:3], 1, axis=0)
+            data['X'][:, 1:3] = np.roll(data['X'][::-1, 1:3], 1, axis=0)
             data['key']['up'], data['key']['down'] = data['key']['down'], data['key']['up']
             data['pos'][2] = 450 - data['pos'][2]
             return data
@@ -373,13 +401,20 @@ class DataLoader(object):
 
         def array2vision(self, array_data: dict, verbose: bool = False) -> dict:
             pos = array_data['pos'][1] + 200, array_data['pos'][2]
-            hit_vision = get_vision(pos=pos, angles=self.configs.angles, img=array_data['hit_array'])
+            if self.configs.data_style == 'raw':
+                x = array_data['hit_array']
+            elif self.configs.data_style == 'simple_vision':
+                x = get_vision(pos=pos, angles=self.configs.angles, img=array_data['hit_array'], mode='simple_vision')
+            elif self.configs.data_style == 'deep_vision':
+                x = get_vision(pos=pos, angles=self.configs.angles, img=array_data['hit_array'], mode='deep_vision')
+            else:
+                raise TypeError
             vision_data = {
-                'hit_vision': hit_vision,
+                'X': x,
                 'key': array_data['key'], 'pos': array_data['pos']
             }
             if verbose:
-                # canvas = draw_polar_lines(array_data['hit_array'], pos, False, hit_vision, 150, 1)
+                # canvas = draw_polar_lines(array_data['hit_array'], pos, False, X, 150, 1)
                 self.pb.progress()
                 self.pb.print()
             return vision_data
@@ -401,11 +436,10 @@ class DataLoader(object):
 
 
 if __name__ == '__main__':
-    # dl = DataLoader(path='C:/Users/quale/Desktop/TouhouBulletHell/json_dataset',
     dl = DataLoader()
-    # for data_ in dl.test_ds:
-        # print(data_['key'])
-        # pass
-    for data_ in dl.train_ds:
-        print(data_['key'])
+    for data_ in dl.test_ds:
+        # cv2.imshow('', data_['X'][0, ..., 1])
+        cv2.imshow('', data_['X'][0, 0])
+        cv2.waitKey(1)
+        print(data_['X'].shape)
         pass
