@@ -32,20 +32,20 @@ CHECKPOINT_SAVE_BEST = False
 # DATASET CONFIGS #
 ###################
 
-# DATASET_PATH = '/home/shin/Desktop/TouhouBulletHell/json_dataset'
-DATASET_PATH = 'C:/Users/quale/Desktop/TouhouBulletHell/json_dataset'
+DATASET_PATH = '/home/shin/Desktop/TouhouBulletHell/json_dataset'
+# DATASET_PATH = 'C:/Users/quale/Desktop/TouhouBulletHell/json_dataset'
 DATASET_TTS = 0.1
 DATASET_SEED = 104
 DATASET_PRELOAD_LEVEL = 0
-DATASET_ANGLES = 256
-DATASET_DEEP_VISION_DEPTH = 600  # Only used if DATASET_DATA_STYLE is 'deep_vision'
+DATASET_ANGLES = 512
+DATASET_DEEP_VISION_DEPTH = 256  # Only used if DATASET_DATA_STYLE is 'deep_vision'
 DATASET_TRAIN_BATCH_SIZE = 8
-DATASET_TEST_BATCH_SIZE = 8
+DATASET_TEST_BATCH_SIZE = 1
 
 DATASET_DATA_STYLE = [
     'raw',  # array -> [BATCH, FRAME, IMAGE_HEIGHT, IMAGE_WIDTH]
     'simple_vision',  # stacked lines -> [BATCH, FRAME, ANGLES, [DISTANCE, HIT]]
-    'deep_vision',  # TODO stacked full vision lines -> [BATCH, FRAME, VIEW_ANGLES, VIEW_HITS]
+    'deep_vision',  # stacked full vision lines -> [BATCH, FRAME, VIEW_ANGLES, VIEW_HITS]
 ][2]
 
 DATASET_STACK_STYLE = [
@@ -54,8 +54,8 @@ DATASET_STACK_STYLE = [
     'skip_all'  # TODO skips all duplicating area of index ref [1, 2, 3, 4] -> [1, 2], [3, 4]
 ][1]
 
-DATASET_STACKS = 5
-DATASET_STACK_FRAME_SKIP = 10
+DATASET_STACKS = 20
+DATASET_STACK_FRAME_SKIP = 5
 DATASET_SMOOTHEN = 1
 
 #################

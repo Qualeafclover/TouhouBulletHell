@@ -113,12 +113,14 @@ def pol2cart(rho: float, phi: float, origin=(0., 0.)) -> typing.Tuple[float, flo
     return x+origin[0], y+origin[1]
 
 
-def get_vision(pos: typing.Union[tuple, list], angles: int, img: np.ndarray, mode='simple_vision') -> np.ndarray:
+def get_vision(pos: typing.Union[tuple, list], angles: int,
+               img: np.ndarray, mode='simple_vision', depth: int = None) -> np.ndarray:
     r"""
     :param pos: float axis coordinates, (x, y)
     :param angles: number of lines to draw
     :param img: 2d numpy array
     :param mode: vision method, must be "simple_vision" or "deep_vision"
+    :param depth: only used when mode is "deep_vision", determines the depth for the "deep_vision" mode
     :return: array in format [[angles in radians], [distances], [1 for bullet, 0 for wall hit]]
     """
     assert mode in ('simple_vision', 'deep_vision')
@@ -148,7 +150,25 @@ def get_vision(pos: typing.Union[tuple, list], angles: int, img: np.ndarray, mod
              )[0], axis=0)),
             check_lines)  # x, y all points to check, excluding out of bounds
 
-    elif mode == 'deep_vision':  # TODO you left off here trying to make the out of bounds visible from the output array
+        lines = list(map(
+            (lambda arr:
+             img[arr[:, 1].astype(int), arr[:, 0].astype(int)]
+             ),
+            check_lines))  # values of images on check_line positions
+
+        line_switches = map(
+            (lambda arr:
+             np.where(arr[:-1] != arr[1:])[0]),
+            lines)  # distance of angle where collision and non-collision switch
+
+        distances = list(map(
+            (lambda ls, l, ca: (ca, ls[0] / max_len, 1) if len(ls) else (ca, len(l) / max_len, 0)),
+            line_switches, lines, check_angles))  # results ({angle}, {distance}, {1 for bullet, 0 for wall hit})
+
+        distances = np.array(distances)
+        return distances
+
+    elif mode == 'deep_vision':
         check_lines = map(
             (lambda arr: np.where(
                 ~np.stack([(w <= arr[:, 0]) | (arr[:, 0] <= 0) | (h <= arr[:, 1]) | (arr[:, 1] <= 0)] * 2, axis=-1),
@@ -156,30 +176,15 @@ def get_vision(pos: typing.Union[tuple, list], angles: int, img: np.ndarray, mod
             )),
             check_lines)  # x, y all points to check, replacing out of bounds with None
 
-    lines = list(map(
-        (lambda arr:
-         img[arr[:, 1].astype(int), arr[:, 0].astype(int)]
-         ),
-        check_lines))  # values of images on check_line positions
+        img[int(pos[1]), int(pos[0])] = 127  # Not a very elegant solution, but this will do for now
+        lines = list(map(
+            (lambda arr:
+             img[arr[:depth, 1].astype(np.int), arr[:depth, 0].astype(np.int)]
+             ),
+            check_lines))  # values of images on check_line positions
 
-    if mode == 'deep_vision':
-        lines = np.stack(lines)
-        print(lines.shape)
-        cv2.imshow('', lines)
-        cv2.waitKey(0)
-        quit()
-
-    line_switches = map(
-        (lambda arr:
-         np.where(arr[:-1] != arr[1:])[0]),
-        lines)  # distance of angle where collision and non-collision switch
-
-    distances = list(map(
-        (lambda ls, l, ca: (ca, ls[0] / max_len, 1) if len(ls) else (ca, len(l) / max_len, 0)),
-        line_switches, lines, check_angles))  # results ({angle}, {distance}, {1 for bullet, 0 for wall hit})
-
-    distances = np.array(distances)
-    return distances
+        lines = np.stack(lines, axis=0)
+        return lines
 
 
 def draw_polar_line(image: np.ndarray,
@@ -332,7 +337,11 @@ class DataLoader(object):
                     'key': data['key']
                 }
             else:
-                raise NotImplementedError
+                new_data = {
+                    'X': data['X'],
+                    'pos': np.stack([data['pos'][..., 1] / 200, (data['pos'][..., 2] - 225) / 450], axis=1),
+                    'key': data['key']
+                }
             return new_data
 
         def augmentation(self, data: list) -> list:
@@ -406,7 +415,8 @@ class DataLoader(object):
             elif self.configs.data_style == 'simple_vision':
                 x = get_vision(pos=pos, angles=self.configs.angles, img=array_data['hit_array'], mode='simple_vision')
             elif self.configs.data_style == 'deep_vision':
-                x = get_vision(pos=pos, angles=self.configs.angles, img=array_data['hit_array'], mode='deep_vision')
+                x = get_vision(pos=pos, angles=self.configs.angles, img=array_data['hit_array'],
+                               mode='deep_vision', depth=self.configs.deep_vision_depth)
             else:
                 raise TypeError
             vision_data = {
@@ -438,8 +448,10 @@ class DataLoader(object):
 if __name__ == '__main__':
     dl = DataLoader()
     for data_ in dl.test_ds:
-        # cv2.imshow('', data_['X'][0, ..., 1])
-        cv2.imshow('', data_['X'][0, 0])
-        cv2.waitKey(1)
+        for n_frame in range(DATASET_STACKS-1, 0, -1):
+            # TODO find out why data is stacked the wrong way, also check if y has correctly went through the pipeline
+            cv2.imshow('', np.rot90(data_['X'][0, n_frame]))
+            cv2.waitKey(30)
+        cv2.waitKey(0)
         print(data_['X'].shape)
         pass
