@@ -38,7 +38,7 @@ class DatasetIndexer(object):
             candidate_nums = np.array(list(map((lambda s: int(os.path.splitext(os.path.split(s)[1])[0])), recording)))
             target_index = np.stack(
                 [candidate_nums - (n * self.configs.stack_frame_skip)
-                 for n in range(self.configs.stacks)], axis=1).reshape((len(recording) * self.configs.stacks,))
+                 for n in range(self.configs.stacks, 0, -1)], axis=1).reshape((len(recording) * self.configs.stacks,))
             select_index = np.array(
                 list(map((lambda n: np.argmin(np.abs(candidate_nums - n))),
                          target_index))).reshape((len(recording), self.configs.stacks))
@@ -50,6 +50,13 @@ class DatasetIndexer(object):
             else:
                 self.index = np.concatenate([self.index, select_index])
 
+        if self.configs.stack_style == 'use_all':
+            self.index = self.index
+        if self.configs.stack_style == 'skip_dupes':
+            self.index = np.array([v for v in self.index if len(set(v)) == len(v)])
+        if self.configs.stack_style == 'skip_all':
+            raise NotImplementedError
+
     def random(self, new_seed: bool = True):
         random_state = np.random.RandomState(self.configs.seed)
         if new_seed:
@@ -57,13 +64,7 @@ class DatasetIndexer(object):
         return random_state
 
     def get_filtered(self, shuffle=True) -> np.ndarray:
-        output = np.array([])
-        if self.configs.stack_style == 'use_all':
-            output = self.index
-        if self.configs.stack_style == 'skip_dupes':
-            output = np.array([v for v in self.index if len(set(v)) == len(v)])
-        if self.configs.stack_style == 'skip_all':
-            pass
+        output = self.index
         if shuffle:
             self.random().shuffle(output)
         return output
@@ -176,10 +177,11 @@ def get_vision(pos: typing.Union[tuple, list], angles: int,
             )),
             check_lines)  # x, y all points to check, replacing out of bounds with None
 
-        img[int(pos[1]), int(pos[0])] = 127  # Not a very elegant solution, but this will do for now
+        img_ = img.copy()
+        img_[int(pos[1]), int(pos[0])] = 127  # Not a very elegant solution, but this will do for now
         lines = list(map(
             (lambda arr:
-             img[arr[:depth, 1].astype(np.int), arr[:depth, 0].astype(np.int)]
+             img_[arr[:depth, 1].astype(np.int), arr[:depth, 0].astype(np.int)]
              ),
             check_lines))  # values of images on check_line positions
 
@@ -277,7 +279,13 @@ class DataLoader(object):
                     data = list(map(self.path2json, data))  # False positive warning
                 if self.configs.preload_level < 2:
                     data = list(map(self.json2array, data))
-                if self.configs.preload_level < 3:
+                if self.configs.preload_level < 3:  # Dirty coding, fix it one day please
+                    # Arrange data pos, for elegancy points, structural changes to the program is likely required
+                    def group_pos(data_index):
+                        data_head = (((data_index // self.configs.stacks)+1) * self.configs.stacks)-1
+                        data[data_index]['pos'] = data[data_head]['pos']
+                    for _ in map(group_pos, range(len(data))):
+                        pass
                     data = list(map(self.array2vision, data))
 
                 data = self.augmentation(data)
@@ -287,7 +295,6 @@ class DataLoader(object):
                 data['key'] = list(map(self.key_dict2arr, data['key']))
                 data['key'] = np.stack(data['key'])
                 data = self.restack_data(data)
-                print(data['X'].shape)
                 data = self.filter_data(data)
 
                 self.batch_count += 1
@@ -308,8 +315,9 @@ class DataLoader(object):
                     data['pos'].shape[1:]),
                 'key': data['key'].reshape(
                     (data['key'].shape[0]//self.configs.stacks, self.configs.stacks, ) +
-                    data['key'].shape[1:])[:, 0, :]
+                    data['key'].shape[1:])[:, self.configs.stacks-1, :]
             }
+            new_data['X'] = np.moveaxis(new_data['X'], 1, 3)
             return new_data
 
         @classmethod
@@ -349,29 +357,42 @@ class DataLoader(object):
                 pass
             elif self.split == 'train':
                 # Flip LR
-                if self.random().random() > 0.5:
-                    data = list(map(self.aug_flip_lr, data))
+                for tail_index in range(0, len(data), self.configs.stacks):
 
-                # Flip UD
-                if self.random().random() > 0.5:
-                    data = list(map(self.aug_flip_ud, data))
+                    if self.random().random() > 0.5:
+                        data[tail_index:tail_index+self.configs.stacks] = list(
+                            map(self.aug_flip_lr, data[tail_index:tail_index+self.configs.stacks]))
+                    # Flip UD
+                    if self.random().random() > 0.5:
+                        data[tail_index:tail_index+self.configs.stacks] = list(
+                            map(self.aug_flip_ud, data[tail_index:tail_index+self.configs.stacks]))
             else:
                 raise TypeError(f'Unknown split type "{self.split}".')
             return data
 
-        @classmethod
-        def aug_flip_lr(cls, data: dict) -> dict:
-            angles = data['X'].shape[0]
-            data['X'][:, 1:3] = np.roll(np.roll(data['X'][:, 1:3],
-                                                -int(round(angles/4)), axis=0)[::-1],
-                                        int(round(angles/4)) + 1, axis=0)
+        def aug_flip_lr(self, data: dict) -> dict:
+            if self.configs.data_style == 'raw':
+                raise NotImplementedError
+            elif self.configs.data_style == 'simple_vision':
+                angles = self.configs.angles
+                data['X'][:, 1:3] = np.roll(np.roll(data['X'][:, 1:3],
+                                                    -int(round(angles/4)), axis=0)[::-1],
+                                            int(round(angles/4)) + 1, axis=0)
+            elif self.configs.data_style == 'deep_vision':
+                angles = self.configs.angles
+                data['X'] = np.roll(np.roll(data['X'], -int(round(angles/4)), axis=0)[::-1],
+                                    int(round(angles/4)) + 1, axis=0)
             data['key']['left'], data['key']['right'] = data['key']['right'], data['key']['left']
             data['pos'][1] = -data['pos'][1]
             return data
 
-        @classmethod
-        def aug_flip_ud(cls, data: dict) -> dict:
-            data['X'][:, 1:3] = np.roll(data['X'][::-1, 1:3], 1, axis=0)
+        def aug_flip_ud(self, data: dict) -> dict:
+            if self.configs.data_style == 'raw':
+                raise NotImplementedError
+            elif self.configs.data_style == 'simple_vision':
+                data['X'][:, 1:3] = np.roll(data['X'][::-1, 1:3], 1, axis=0)
+            elif self.configs.data_style == 'deep_vision':
+                data['X'] = np.roll(data['X'][::-1], 1, axis=0)
             data['key']['up'], data['key']['down'] = data['key']['down'], data['key']['up']
             data['pos'][2] = 450 - data['pos'][2]
             return data
@@ -424,7 +445,6 @@ class DataLoader(object):
                 'key': array_data['key'], 'pos': array_data['pos']
             }
             if verbose:
-                # canvas = draw_polar_lines(array_data['hit_array'], pos, False, X, 150, 1)
                 self.pb.progress()
                 self.pb.print()
             return vision_data
@@ -447,11 +467,11 @@ class DataLoader(object):
 
 if __name__ == '__main__':
     dl = DataLoader()
-    for data_ in dl.test_ds:
-        for n_frame in range(DATASET_STACKS-1, 0, -1):
-            # TODO find out why data is stacked the wrong way, also check if y has correctly went through the pipeline
-            cv2.imshow('', np.rot90(data_['X'][0, n_frame]))
-            cv2.waitKey(30)
-        cv2.waitKey(0)
+    for data_ in dl.train_ds:
         print(data_['X'].shape)
+        print(np.round(data_['key'], 3))
+        print()
+        for t in range(DATASET_TRAIN_BATCH_SIZE):
+            cv2.imshow('', np.rot90(data_['X'][t]))
+            cv2.waitKey(0)
         pass
