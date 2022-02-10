@@ -181,7 +181,7 @@ def get_vision(pos: typing.Union[tuple, list], angles: int,
         img_[int(pos[1]), int(pos[0])] = 127  # Not a very elegant solution, but this will do for now
         lines = list(map(
             (lambda arr:
-             img_[arr[:depth, 1].astype(np.int), arr[:depth, 0].astype(np.int)]
+             img_[arr[:depth, 1].astype(int), arr[:depth, 0].astype(int)]
              ),
             check_lines))  # values of images on check_line positions
 
