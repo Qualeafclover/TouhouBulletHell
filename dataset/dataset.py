@@ -471,7 +471,7 @@ if __name__ == '__main__':
         print(data_['X'].shape)
         print(np.round(data_['key'], 3))
         print()
-        for t in range(DATASET_TRAIN_BATCH_SIZE):
-            cv2.imshow('', np.rot90(data_['X'][t]))
+        for t_ in range(DATASET_TRAIN_BATCH_SIZE):
+            cv2.imshow('', np.rot90(data_['X'][t_]))
             cv2.waitKey(0)
         pass
