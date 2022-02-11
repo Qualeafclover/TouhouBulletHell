@@ -64,3 +64,8 @@ DATASET_SMOOTHEN = 1  # TODO smoothen key outputs based on time. Might not be ne
 
 MODEL_SEED = 104
 MODEL_VISION = 256
+
+MODEL_TYPE = [
+    'loop_net_1d',
+    'loop_net_2d',
+]
