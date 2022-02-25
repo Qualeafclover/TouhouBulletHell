@@ -1,6 +1,9 @@
-from configs import *
-from model.model_utils import *
+if __name__ == '__main__':
+    from model_utils import *
+else:
+    from model.model_utils import *
 
+from configs import *
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
@@ -51,4 +54,4 @@ if __name__ == '__main__':
     # a = loop_net.save_weights('/home/shin/Desktop/TouhouBulletHell/checkpoint/cp-01')
     # print(a)
     from tensorflow.keras.utils import plot_model
-    plot_model(loop_net, 'file.png', show_shapes=True)
+    plot_model(loop_net, 'loop_net_1d.png', show_shapes=True)
